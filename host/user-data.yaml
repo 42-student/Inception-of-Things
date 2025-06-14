@@ -1,0 +1,20 @@
+#cloud-config
+hostname: iot-host
+users:
+  - name: inception
+    groups: users, admin, sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    passwd: <HASH>
+    chpasswd: { expire: False }
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - curl
+  - git
+  - ansible
+runcmd:
+  - [ systemctl, enable, qemu-guest-agent ]
+  - [ mount, -t, 9p, -o, trans=virtio,version=9p2000.L, iot, /mnt ]

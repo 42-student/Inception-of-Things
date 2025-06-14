@@ -1,0 +1,75 @@
+---
+- name: Provision VM Host for Vagrant and Libvirt
+  hosts: all
+  become: true
+  vars:
+    vagrant_user: "{{ ansible_user | default('ubuntu') }}"
+    vagrant_plugins:
+      - vagrant-libvirt
+      - vagrant-mutate
+
+  tasks:
+    - name: Ensure system is up-to-date
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install required packages
+      apt:
+        name:
+          - qemu-kvm
+          - libvirt-daemon-system
+          - libvirt-clients
+          - bridge-utils
+          - virtinst
+          - vagrant
+          - qemu-guest-agent
+          - git
+          - curl
+        state: present
+
+    - name: Ensure libvirtd service is enabled and started
+      service:
+        name: libvirtd
+        state: started
+        enabled: yes
+
+    - name: Add user to libvirt and kvm groups
+      user:
+        name: "{{ vagrant_user }}"
+        groups: libvirt,kvm
+        append: yes
+
+    - name: Install Vagrant plugins
+      become: false
+      environment:
+        VAGRANT_HOME: "/home/{{ vagrant_user }}/.vagrant.d"
+      shell: |
+        for plugin in {{ vagrant_plugins | join(' ') }}; do
+          vagrant plugin install $plugin || true
+        done
+      args:
+        executable: /bin/bash
+      when: vagrant_user != 'root'
+
+    - name: Ensure user has correct permissions on .vagrant.d
+      file:
+        path: "/home/{{ vagrant_user }}/.vagrant.d"
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        state: directory
+        recurse: yes
+      when: vagrant_user != 'root'
+
+    - name: Reboot if required (e.g., after group membership changes)
+      reboot:
+        msg: "Rebooting to apply group membership changes"
+        connect_timeout: 5
+        reboot_timeout: 600
+      when: "'reboot required' in ansible_facts and ansible_facts['reboot required']"
+
+    - name: Print post-install instructions
+      debug:
+        msg: |
+          Host is provisioned! You may need to log out and log back in for group changes to take effect.
+          Test libvirt with 'virsh list --all' and Vagrant with 'vagrant --version'.
