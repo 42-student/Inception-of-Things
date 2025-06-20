@@ -2,16 +2,17 @@ NAME := Inception-of-Things
 AUTHORS := mcutura
 
 HOSTNAME := iot-host
-
+SESSION := --connect qemu:///session
 VM_NAME := IoT-host
+
 VM_IMGDIR := ${HOME}/sgoinfre/VMs
 VM_IMG := $(VM_IMGDIR)/iot.qcow2
-SESSION := --connect qemu:///session
 
-ISO_FILE := ${HOME}/sgoinfre/iso/ubuntu-22.04.5-live-server-amd64.iso
+ISO_DIR := ${HOME}/sgoinfre/iso
+ISO_FILE := $(ISO_DIR)/ubuntu-22.04.5-live-server-amd64.iso
 ISO_URL := https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso
 
-CLOUDIMG_FILE := ${HOME}/sgoinfre/iso/jammy-server-cloudimg-amd64.img
+CLOUDIMG_FILE := $(ISO_DIR)/jammy-server-cloudimg-amd64.img
 CLOUDIMG_URL := https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
 VM_CLOUDIMG := $(VM_IMGDIR)/iot-cloud.qcow2
 
@@ -46,17 +47,19 @@ connect:	# Connect to Host VM
 import: $(VM_IMG) | $(ISO_FILE)	# Import Host VM
 	virsh $(SESSION) define --file <(sed "s|ISO_PATH|$(ISO_FILE)|g;s|PROJECT_DIR_PATH|$$(pwd)|g;s|INTRA_NAME|$${USER}|g" host/iot-host.xml)
 
-$(ISO_FILE):
-	@wget -O $(ISO_FILE) $(ISO_URL)
+$(ISO_FILE): | $(ISO_DIR)
+	@curl -o $(ISO_FILE) $(ISO_URL)
 
-$(VM_IMGDIR):
-	@mkdir -p $(VM_IMGDIR)
+$(VM_IMGDIR) $(ISO_DIR):
+	@mkdir -p $@
 
-$(VM_IMG): |$(VM_IMGDIR)
+$(VM_IMG): | $(VM_IMGDIR)
 	qemu-img create -f qcow2 $(VM_IMG) 25G
 
 clean:	# Remove Host VM and its storage
+	$(info Cleaning up...)
 	-virsh $(SESSION) destroy $(VM_NAME)
+	-find ~/ -name "*$(VM_NAME)_VARS.fd*" -delete 2>/dev/null
 	virsh $(SESSION) undefine $(VM_NAME) --snapshots-metadata --remove-all-storage
 
 
@@ -64,21 +67,25 @@ clean:	# Remove Host VM and its storage
 .PHONY: install isofs
 
 install: isofs $(VM_CLOUDIMG)	# Install VM from CloudImg
-	virt-install $(SESSION) --name $(VM_NAME) --ram 8192 --vcpus 10 \
-		--disk path=$(VM_CLOUDIMG),format=qcow2 \
-		--disk path=host/seed.iso,device=cdrom \
+	virt-install $(SESSION) --name $(VM_NAME) --ram 8192 --vcpus 8 \
+		--disk path=$(VM_CLOUDIMG),format=qcow2,bus=virtio \
+		--disk path=host/seed.iso,device=cdrom,bus=sata \
 		--filesystem $$(pwd),iot,type=mount,mode=squash \
 		--os-variant ubuntu22.04 --network user --graphics none \
-		--console pty,target_type=serial --import
+		--console pty,target_type=serial \
+		--boot hd,cdrom \
+		--arch x86_64 \
+		--machine pc \
+		--import
 
 isofs:	# Create the Cloud-Init ISO
 	sed "s|<HASH>|$$(openssl passwd -6)|g" host/user-data.yaml > host/user-data
 	docker run --rm -v $(PWD)/host:/data alpine sh -c \
 		"apk add --no-cache cdrkit && mkisofs -output /data/seed.iso -volid cidata -joliet -rock /data/user-data /data/meta-data"
-	shred -fun 42 host/user-data
+	rm -f host/user-data
 
-$(CLOUDIMG_FILE):
-	@wget -O $(CLOUDIMG_FILE) $(CLOUDIMG_URL)
+$(CLOUDIMG_FILE): | $(ISO_DIR)
+	@curl -o $(CLOUDIMG_FILE) $(CLOUDIMG_URL)
 
 $(VM_CLOUDIMG): $(CLOUDIMG_FILE) | $(VM_IMGDIR)
 	qemu-img create -f qcow2 -b $(CLOUDIMG_FILE) -F qcow2 $(VM_CLOUDIMG) 25G
