@@ -5,31 +5,39 @@
 ## Setup Host VM
 
 Within the Host Machine, we configure a Host VM (one that will run nested VMs)  
-We use Virtual Machine Manager as our hypervisor.  
 
-### Setup
+We use `libvirt` (Virtual Machine Manager) as our hypervisor.  
+
+### Config
 
 > Name: IoT-host  
 > OS: Ubuntu Server LTS 22.04.5  
 > Memory: 8192 MB  
-> CPUs: 10  
+> CPUs: 8  
 > Storage: qcow2 disk (25 GB)  
-> Network: User (bridge not possible in user session)  
+> Network: User (bridge not possible in our user session)  
+
+---
 
 ### Cloud Init
+
+Hands-off automated setup of the Virtual Machine:  
 
 ```bash
 make install
 ```
 
-Login into the host VM with user: inception and password provided at start  
+Login into the host VM with user: `inception` and password that you provided at the start  
 
 Ready to roll...  
-Proceed to [P0](#p0)  
+
+**Proceed to [P0](#p0)**  
+
+---
 
 ### Alternative: XML import
 
-A more involved approach.
+A more manual approach.
 
 ```bash
 make import
@@ -37,9 +45,10 @@ make import
 
 #### Install
 
-Open the machine in VMM  
-Run installation with defaults  
-After installation completes:
+- Open the machine in VMM  
+- Run installation with defaults  
+- After installation completes:  
+
     1. reboot,  
     2. login to verify setup,  
     3. make snapshot (View -> Snapshots -> +),  
@@ -47,6 +56,7 @@ After installation completes:
     5. Run: `systemctl start serial-getty@ttyS0.service` and authenticate with password  
     6. shutdown.  
 
+- Configure mounting our source directory inside VM:  
 View -> Details -> Add Hardware -> Filesystem -> Driver: virtio-9p, Source: <this dir>, Target: iot  
 
 #### Provision
@@ -60,12 +70,19 @@ make connect
 ```
 
 Login using your VM credentials.  
+
 *Note: You can use `Ctrl+[` to exit the VM console.*  
+
+Update repositories and install core packages:  
 
 ```bash
 sudo apt-get update && sudo apt-get upgrade -y
 sudo apt-get install qemu-guest-agent git curl ansible
 ```
+
+---
+
+## P0
 
 #### Mount our project as external filesystem
 
@@ -73,9 +90,7 @@ sudo apt-get install qemu-guest-agent git curl ansible
 sudo mount -t 9p -o trans=virtio,version=9p2000.L iot /mnt
 ```
 
-## P0
-
-Call ansible playbook  
+#### Call ansible playbook  
 
 ```bash
 cp -r /mnt ~
@@ -83,6 +98,8 @@ cd ~/mnt/host
 ansible-playbook -i hosts.ini provision_vm_host.yaml
 sudo reboot now
 ```
+
+---
 
 ## P1
 
@@ -92,6 +109,8 @@ WIP
 cd ~/mnt/p1
 vagrant up
 ```
+
+---
 
 ## TODO:
 - P2
