@@ -88,12 +88,14 @@ sudo apt-get install qemu-guest-agent git curl ansible
 
 ```bash
 sudo mount -t 9p -o trans=virtio,version=9p2000.L iot /mnt
+
+# Make a copy owned by our user to avoid issues with write permissions
+cp -r /mnt ~
 ```
 
 #### Call ansible playbook  
 
 ```bash
-cp -r /mnt ~
 cd ~/mnt/host
 ansible-playbook -i hosts.ini provision_vm_host.yaml
 sudo reboot now
