@@ -114,7 +114,53 @@ vagrant up
 
 ---
 
+## P2
+
+WIP
+
+#### Set up the VM for K3s
+
+```bash
+cd ~/mnt/p2
+vagrant up
+```
+
+#### SSH into the VM with K3s
+
+```bash
+vagrant ssh smargineS
+```
+
+### Instructions for app1
+
+#### Create Deployment and Service for app1
+
+```bash
+/vagrant/scripts/manage_app1.sh apply
+```
+
+#### List the Services:
+
+```bash
+kubectl get svc
+```
+
+#### Test the Service by curling its ClusterIP from within the VM:
+
+```bash
+# replace <CLUSTER-IP> with the CLUSTER-IP for the Service you want to test
+curl http://<CLUSTER-IP>:80
+```
+
+#### Delete Deployment and Service for app1
+
+```bash
+/vagrant/scripts/manage_app1.sh delete
+```
+
+---
+
 ## TODO:
-- P2
 - P3
 - Bonus
+
