@@ -114,7 +114,66 @@ vagrant up
 
 ---
 
+## P2
+
+
+#### Set up the VM for K3s
+
+```bash
+cd ~/mnt/p2
+vagrant up
+```
+
+#### SSH into the VM
+
+```bash
+vagrant ssh smargineS
+```
+
+### Instructions for Applications
+
+#### Check if pods are up and running:
+
+```bash
+kubectl get pods -o wide -A
+```
+
+#### Apply resources for Applications
+
+```bash
+/vagrant/scripts/manage_apps.sh apply
+```
+
+#### List pods info:
+
+```bash
+kubectl get all
+```
+
+#### Test the internal Service by curling from within the VM:
+
+```bash
+# replace <CLUSTER-IP> with the CLUSTER-IP for the Service you want to test
+curl http://<CLUSTER-IP>:80
+```
+
+#### Test the external Service by curling from within the VM:
+
+```bash
+curl -H "Host: app1.com" http://192.168.56.110   # for app1
+curl -H "Host: app2.com" http://192.168.56.110   # for app2
+curl http://192.168.56.110                       # for app3 (default) 
+```
+
+#### Delete resources for Applications
+
+```bash
+/vagrant/scripts/manage_apps.sh delete
+```
+
+---
+
 ## TODO:
-- P2
 - P3
 - Bonus
+
