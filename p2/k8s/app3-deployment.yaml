@@ -17,7 +17,7 @@ spec:
         image: python:3.9-slim
         command: ["sh", "-c", "pip install flask && python /app/app3-flask.py"]
         ports:
-        - containerPort: 5000
+        - containerPort: 80
         volumeMounts:
         - name: app3-config-volume
           mountPath: /app/app3-flask.py
